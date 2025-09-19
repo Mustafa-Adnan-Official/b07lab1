@@ -56,20 +56,3 @@ public class Polynomial {
         return this.evaluate(x) == 0;
     }
 }
-
-/*
-public static void main(String[] args) {
-    Polynomial p1 = new Polynomial(new double[] {1,2,3}); // 1 + 2x + 3x^2
-    Polynomial p2 = new Polynomial(new double[] {0,1,0,4}); // 0 + 1x + 0x^2 + 4x^3
-
-    Polynomial p3 = p1.add(p2); // should be 1 + 3x + 3x^2 + 4x^3
-
-    System.out.println("p1(2) = " + p1.evaluate(2)); // should be 17
-    System.out.println("p2(2) = " + p2.evaluate(2)); // should be 34
-    System.out.println("p3(2) = " + p3.evaluate(2)); // should be 51
-
-    System.out.println("p1 has root at x= -0.5: " + p1.hasRoot(-0.5)); // should be false
-    System.out.println("p2 has root at x= 0: " + p2.hasRoot(0)); // should be true
-    System.out.println("p3 has root at x= -1: " + p3.hasRoot(-1)); // should be false
-}
-*/
