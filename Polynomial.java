@@ -1,56 +1,66 @@
+import java.io.*; // for File, FileReader, BufferedReader
+
 public class Polynomial {
-    private double [] coeffs_map_degree; // coeffs_map_degree[i] is the coef for x^i
+    private double [] coeffs; // term i is coeffs[i] * x^(degrees[i])
+    private int [] degrees; // matching exponents for coeffs[i]
     
     public Polynomial(){
-        coeffs_map_degree = new double[1];
-        coeffs_map_degree[0] = 0.0;
+        // zero polynomial
+        this.coeffs = new double[0];
+        this.degrees= new int[0];
     }
 
-    public Polynomial(double [] coeffs_map_degree) {
-        //this.coeffs_map_degree = coeffs_map_degree; WRONG: aliasing not a copy
-        // aliasing: two references point to same object in mem
-        // copy: two references point to two diff objects in mem, with the same content
-        if (coeffs_map_degree == null || coeffs_map_degree.length == 0) {
-            this.coeffs_map_degree = new double[1];
-            this.coeffs_map_degree[0] = 0.0;
-            // or in one line: this.coeffs_map_degree = new double[]{0.0};
-        }
-        else{
-            this.coeffs_map_degree = new double[coeffs_map_degree.length];
-            for (int i=0; i<coeffs_map_degree.length; i++)
-                this.coeffs_map_degree[i] = coeffs_map_degree[i];
+    public Polynomial(double [] coeffs, int [] degrees){
+        this.coeffs = new double[coeffs.length];
+        this.degrees = new int[degrees.length];
+
+        for (int i=0; i<coeffs.length; i++){
+            this.coeffs[i] = coeffs[i];
+            this.degrees[i] = degrees[i];
         }
     }
 
     public Polynomial add (Polynomial p) {
-        int highest_deg = Math.max(this.coeffs_map_degree.length, p.coeffs_map_degree.length);
-        int lower_deg = Math.min(this.coeffs_map_degree.length, p.coeffs_map_degree.length);
-        double [] new_coeffs = new double[highest_deg]; // new arr with sufficient size for highest degree (init. to 0.0)
-        
-        // add coeffs for degrees that both polys have
-        for (int i=0; i<lower_deg; i++){
-            new_coeffs[i] = this.coeffs_map_degree[i] + p.coeffs_map_degree[i];
+        double[] temp_coeffs = new double[this.coeffs.length + p.coeffs.length];
+        int[] temp_degrees = new int[this.degrees.length + p.degrees.length];
+        int index = 0;
+
+        for (int i = 0; i < this.coeffs.length; i++) {
+            temp_coeffs[index] = this.coeffs[i];
+            temp_degrees[index] = this.degrees[i];
+            index++;
         }
-        // copy remaining coeffs from the poly with the higher degree
-        if (this.coeffs_map_degree.length > p.coeffs_map_degree.length) {
-            for (int i=lower_deg; i<highest_deg; i++){
-                new_coeffs[i] = this.coeffs_map_degree[i];
+
+        for (int j = 0; j < p.coeffs.length; j++) {
+            boolean found = false;
+            for (int k = 0; k < index; k++) {
+                if (p.degrees[j] == temp_degrees[k]) {
+                    temp_coeffs[k] += p.coeffs[j];
+                    found = true;
+                    break;
+                }
             }
-        } 
-        else {
-            for (int i=lower_deg; i<highest_deg; i++){
-                new_coeffs[i] = p.coeffs_map_degree[i];
+            if (!found) {
+                temp_coeffs[index] = p.coeffs[j];
+                temp_degrees[index] = p.degrees[j];
+                index++;
             }
         }
-        return new Polynomial(new_coeffs);
+
+        double[] result_coeffs = new double[index];
+        int[] result_degrees = new int[index];
+        for (int i = 0; i < index; i++) {
+            result_coeffs[i] = temp_coeffs[i];
+            result_degrees[i] = temp_degrees[i];
+        }
+
+        return new Polynomial(result_coeffs, result_degrees);
     }
 
     public double evaluate (double x) {
         double result = 0.0;
-        int i = 0;
-        while (i < this.coeffs_map_degree.length) {
-            result += this.coeffs_map_degree[i] * Math.pow(x,i);
-            i++;
+        for (int i = 0; i < this.coeffs.length; i++) {
+            result += this.coeffs[i] * Math.pow(x, this.degrees[i]);
         }
         return result;
     }
@@ -58,4 +68,151 @@ public class Polynomial {
     public boolean hasRoot (double x) {
         return this.evaluate(x) == 0;
     }
+
+    public Polynomial multiply (Polynomial p) {
+        double[] temp_coeffs = new double[this.coeffs.length * p.coeffs.length];
+        int[] temp_degrees = new int[this.degrees.length * p.degrees.length];
+        int index = 0;
+
+        for (int i = 0; i < this.coeffs.length; i++) {
+            for (int j = 0; j < p.coeffs.length; j++) {
+                double new_coeff = this.coeffs[i] * p.coeffs[j];
+                int new_degree = this.degrees[i] + p.degrees[j];
+                boolean found = false;
+                
+                for (int k = 0; k < index; k++) {
+                    if (temp_degrees[k] == new_degree) {
+                        temp_coeffs[k] += new_coeff;
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (!found) {
+                    temp_coeffs[index] = new_coeff;
+                    temp_degrees[index] = new_degree;
+                    index++;
+                }
+            }
+        }
+
+        double[] result_coeffs = new double[index];
+        int[] result_degrees = new int[index];
+        for (int i = 0; i < index; i++) {
+            result_coeffs[i] = temp_coeffs[i];
+            result_degrees[i] = temp_degrees[i];
+        }
+
+        return new Polynomial(result_coeffs, result_degrees);
+    }
+
+    public Polynomial (File file) throws IOException {
+        // open file
+        BufferedReader br = new BufferedReader(new FileReader(file));
+
+        // read the polynomial string
+        String line = br.readLine();
+
+        // close file
+        br.close();
+
+        // make sure first character is + or -
+        if (line.charAt(0) != '+' && line.charAt(0) != '-') {
+            line = "+" + line;
+        }
+
+        // split into pieces like ["+5", "-3x2", "+7x8"]
+        String[] parts = line.split("(?=[+-])");
+
+        double[] tempCoeffs = new double[parts.length];
+        int[] tempDegrees = new int[parts.length];
+        int index = 0;
+
+        // go through each piece
+        for (String term : parts) {
+            if (term.equals("")) continue;
+
+            double coeff;
+            int degree;
+
+            if (term.contains("x")) {
+                String[] split = term.split("x");
+
+                // coefficient (before x)
+                String coeffStr = split[0];
+                if (coeffStr.equals("+") || coeffStr.equals("")) coeff = 1.0;
+                else if (coeffStr.equals("-")) coeff = -1.0;
+                else coeff = Double.parseDouble(coeffStr);
+
+                // exponent (after x)
+                if (split.length == 1 || split[1].equals("")) {
+                    degree = 1;
+                } else {
+                    degree = Integer.parseInt(split[1]);
+                }
+            } else {
+                // constant term
+                coeff = Double.parseDouble(term);
+                degree = 0;
+            }
+
+            tempCoeffs[index] = coeff;
+            tempDegrees[index] = degree;
+            index++;
+        }
+
+        // copy into actual arrays
+        this.coeffs = new double[index];
+        this.degrees = new int[index];
+        for (int i = 0; i < index; i++) {
+            this.coeffs[i] = tempCoeffs[i];
+            this.degrees[i] = tempDegrees[i];
+        }
+
+    }
+
+    public void saveToFile(String filename) throws IOException {
+        PrintStream out = new PrintStream(filename);
+
+        // special case: zero polynomial
+        if (coeffs.length == 0) {
+            out.println("0");
+            out.close();
+            return;
+        }
+
+        String result = "";
+
+        for (int i = 0; i < coeffs.length; i++) {
+            double c = coeffs[i];
+            int e = degrees[i];
+
+            // sign
+            if (c < 0) {
+                result += "-";
+            } else if (!result.equals("")) {
+                result += "+";
+            }
+
+            double abs = Math.abs(c);
+
+            if (e == 0) {
+                // constant
+                result += abs;
+            } else {
+                // x-term
+                if (abs != 1.0) {
+                    result += abs;
+                }
+                result += "x";
+                if (e != 1) {
+                    result += e;
+                }
+            }
+        }
+
+        out.println(result);
+        out.close();
+    }
+
 }
